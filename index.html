@@ -37,6 +37,51 @@ header p{display:none}
 @media(max-width:900px){.settings{grid-template-columns:1fr}.settings-right{align-items:end}.stage{padding:6px}.board{padding:3px}.cell{font-size:clamp(9px,1.4vw,18px)}}
 @media(max-width:570px){header{flex-wrap:wrap}header .bar{gap:4px}.settings{max-height:25dvh}.stage-top{flex-wrap:wrap}.board{gap:2px}.cell{font-size:clamp(7px,1.55vw,12px)}}
 @media(prefers-reduced-motion:reduce){.cell.pop{animation:none}}
+
+/* Responsive touchscreen layouts: the full grid remains available on every device. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,select{touch-action:manipulation}
+@media (pointer:coarse){.button,.chip,select{min-height:44px}.chip{padding:8px 12px}}
+@media (max-width:680px) and (orientation:portrait){
+ .app{padding:max(8px,env(safe-area-inset-top)) 9px max(9px,env(safe-area-inset-bottom));gap:7px}
+ header{display:flex;flex-direction:column;align-items:stretch;gap:6px}
+ header h1{font-size:19px;text-align:center}
+ header .bar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;width:100%}
+ header .bar .button{padding:7px 3px;font-size:11px;min-width:0;line-height:1.15;min-height:38px}
+ .settings{max-height:52dvh;overflow:auto;padding:10px;display:block}
+ .settings-right{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+ .settings-right .field{min-width:0}.settings-right select{min-width:0;width:100%;font-size:13px}
+ .settings-right .toggle{grid-column:1/-1}
+ .chip{min-height:38px}
+ .stage{flex:1;min-height:0;padding:8px;gap:8px}
+ .stage-top{justify-content:center;gap:6px}
+ .stage-top .legend{font-size:10px;flex-wrap:wrap;justify-content:center}
+ #status{font-size:12px}
+ .board{gap:2px;padding:2px}
+ .cell{font-size:clamp(7px,1.7vw,12px)}.cell.question-active{font-size:clamp(7px,1.5vw,11px)}
+ .cell.pop{animation:fact-pop-phone 1.35s cubic-bezier(.2,.75,.3,1) both}
+ @keyframes fact-pop-phone{0%,100%{transform:scale(1)}22%,73%{transform:scale(1.35)}}
+ .no-board .stage-top{justify-content:center}.no-board .stage{min-height:0}
+ .no-board .prompt{flex:1;min-height:0;padding:5px}
+ .no-board .expression{font-size:clamp(42px,11.5vw,88px);overflow-wrap:anywhere}
+ .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .controls .button{min-width:0;min-height:48px;padding:8px 6px;font-size:14px}
+ .foot{display:none}
+}
+@media (max-width:1000px) and (orientation:landscape) and (max-height:600px){
+ .app{padding:5px max(8px,env(safe-area-inset-right)) 5px max(8px,env(safe-area-inset-left));gap:4px}
+ header h1{font-size:17px}header .bar .button{padding:5px 8px;min-height:32px;font-size:12px}
+ .settings{max-height:44dvh}.stage{padding:5px;gap:3px}
+ .stage-top{min-height:15px}.board{padding:1px;gap:2px}
+ .expression{font-size:clamp(24px,4vw,38px)}.prompt{padding:3px 5px}
+ .controls .button{padding:5px 10px;min-height:37px}.progress{height:3px}
+ .no-board .expression{font-size:clamp(45px,10vw,100px)}
+}
+@media (min-width:681px) and (max-width:1100px) and (orientation:portrait){
+ .app{padding:10px;gap:7px}.settings{max-height:32dvh}
+ .board{gap:3px;padding:3px}.cell{font-size:clamp(10px,1.8vw,19px)}
+ .no-board .expression{font-size:clamp(54px,8vw,120px)}
+}
 </style>
 </head><body>
 <div class="app" id="app">
@@ -103,7 +148,20 @@ else inTeachingOrder(queue);
 $('order').disabled=false;
 $('order').title='Choose Random or Teaching Order for any fact group.';
 position=0;started=false;finished=false;current=null;revealed=false;$('progress').style.width='0%';$('status').textContent=`${queue.length} facts selected`;$('expression').textContent=queue.length?'Press Start to practise':'Select at least one fact group';$('start').disabled=!queue.length;$('start').textContent='▶ Start';$('reveal').disabled=true;$('next').disabled=true;refreshBoard();if(autoStart&&queue.length){started=true;show()}}
-$('start').onclick=()=>restart(true);$('reset').onclick=()=>restart(false);$('reveal').onclick=reveal;$('next').onclick=next;$('hideAnswers').onchange=refreshBoard;$('toggleBoard').onclick=()=>{const hidden=document.body.classList.toggle('no-board');$('toggleBoard').textContent=hidden?'Show fact table':'Hide fact table';$('toggleBoard').setAttribute('aria-pressed',String(hidden));requestAnimationFrame(fitBoard)};$('order').onchange=()=>restart(false);$('mode').onchange=()=>restart(false);$('pace').onchange=()=>{if(started&&!finished)show()};$('hideSettings').onclick=()=>{document.body.classList.toggle('hide-settings');$('hideSettings').textContent=document.body.classList.contains('hide-settings')?'Show settings':'Hide settings';requestAnimationFrame(fitBoard)};
+$('start').onclick=()=>restart(true);$('reset').onclick=()=>restart(false);$('reveal').onclick=reveal;$('next').onclick=next;$('hideAnswers').onchange=refreshBoard;$('toggleBoard').onclick=()=>{boardManuallyChosen=true;const hidden=document.body.classList.toggle('no-board');syncBoardButton();requestAnimationFrame(fitBoard)};$('order').onchange=()=>restart(false);$('mode').onchange=()=>restart(false);$('pace').onchange=()=>{if(started&&!finished)show()};$('hideSettings').onclick=()=>{settingsManuallyChosen=true;document.body.classList.toggle('hide-settings');syncSettingsButton();requestAnimationFrame(fitBoard)};
+// On portrait phones, start with a single large question and collapsed settings.
+// On rotation, adapt automatically until the user explicitly chooses a view.
+let boardManuallyChosen=false,settingsManuallyChosen=false;
+const compactPhone=window.matchMedia('(max-width:680px) and (orientation:portrait)');
+function syncBoardButton(){const hidden=document.body.classList.contains('no-board');$('toggleBoard').textContent=hidden?'Show fact table':'Hide fact table';$('toggleBoard').setAttribute('aria-pressed',String(hidden))}
+function syncSettingsButton(){const hidden=document.body.classList.contains('hide-settings');$('hideSettings').textContent=hidden?'Show settings':'Hide settings';$('hideSettings').setAttribute('aria-expanded',String(!hidden))}
+function applyDeviceLayout(){
+ if(!boardManuallyChosen)document.body.classList.toggle('no-board',compactPhone.matches);
+ if(!settingsManuallyChosen)document.body.classList.toggle('hide-settings',compactPhone.matches);
+ syncBoardButton();syncSettingsButton();requestAnimationFrame(fitBoard);
+}
+compactPhone.addEventListener?.('change',applyDeviceLayout);
+window.addEventListener('orientationchange',()=>requestAnimationFrame(fitBoard));
 function full(){if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()}$('fullscreen').onclick=full;
 document.addEventListener('keydown',e=>{if(['SELECT','INPUT','BUTTON'].includes(document.activeElement.tagName))return;if(e.code==='Space'){e.preventDefault();if(!started){restart(true)}else if(!revealed)reveal();else next()}else if(e.code==='ArrowRight'){e.preventDefault();if(started)next()}else if(e.key.toLowerCase()==='r'){restart(true)}else if(e.key.toLowerCase()==='f')full()});
 // Resize the grid to fill the available board panel without extending the page.
@@ -120,6 +178,6 @@ function fitBoard(){
 }
 window.addEventListener('resize',fitBoard);
 new ResizeObserver(fitBoard).observe($('boardWrap'));
-selectedButtons();buildBoard();restart(false);fitBoard();
+selectedButtons();buildBoard();restart(false);applyDeviceLayout();fitBoard();
 })();
 </script></body></html>
